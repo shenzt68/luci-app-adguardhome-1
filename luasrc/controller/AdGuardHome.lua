@@ -1,9 +1,7 @@
 module("luci.controller.AdGuardHome",package.seeall)
 nixio=require"nixio"
+local uci=require"luci.model.uci".cursor()
 function index()
-if not nixio.fs.access("/etc/config/AdGuardHome")then
-return
-end
 	entry({"admin","services","AdGuardHome"},firstchild(),_("AdGuard Home"),30).dependent=true
 	entry({"admin","services","AdGuardHome","general"},cbi("AdGuardHome"),_("Base Setting"),1)
     entry({"admin","services","AdGuardHome","log"},form("AdGuardHomelog"),_("Log"),2)
@@ -14,20 +12,25 @@ end
 
 function act_status()
   local e={}
-  e.running=luci.sys.call("pgrep -f AdGuardHome >/dev/null")==0
+  binpath=uci:get("AdGuardHome","AdGuardHome","binpath")
+  e.running=luci.sys.call("pgrep "..binpath.." >/dev/null")==0
   luci.http.prepare_content("application/json")
   luci.http.write_json(e)
 end
 function do_update()
 nixio.fs.writefile("/var/run/lucilogpos","0")
-nixio.fs.writefile("/tmp/AdGuardHome_update.log","")
-luci.sys.exec("(touch /var/run/update_core ; sh /usr/share/AdGuardHome/update_core.sh ;rm /var/run/update_core) &")
+luci.sys.exec("(touch /var/run/update_core ; sh /usr/share/AdGuardHome/update_core.sh >/tmp/AdGuardHome_update.log;rm /var/run/update_core) &")
 luci.http.prepare_content("application/json")
 luci.http.write('')
 end
 function check_update()
 	luci.http.prepare_content("text/plain; charset=utf-8")
-	fdp=tonumber(nixio.fs.readfile("/var/run/lucilogpos"))
+	logpos=nixio.fs.readfile("/var/run/lucilogpos")
+	if (logpos ~= nil) then
+	fdp=tonumber(logpos)
+	else
+	fdp=0
+	end
 	f=io.open("/tmp/AdGuardHome_update.log", "r+")
 	f:seek("set",fdp)
 	a=f:read(8192)
