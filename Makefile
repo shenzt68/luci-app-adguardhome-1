@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-adguardhome
 PKG_VERSION:=1.7
-PKG_RELEASE:=2
+PKG_RELEASE:=7
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
@@ -55,6 +55,7 @@ define Package/luci-app-adguardhome/postinst
 	/etc/init.d/AdGuardHome start
 	fi
 	rm -f /tmp/luci-indexcache
+	rm -f /tmp/luci-modulecache/*
 exit 0
 endef
 

@@ -7,10 +7,9 @@ STOP=01
 
 CONFIGURATION=AdGuardHome
 config_get configpath $CONFIGURATION configpath "/etc/AdGuardHome.yaml"
-AdGuardHome_PORT=$(awk '/  port:/{printf($2)}' $configpath)
-if [ -z "$AdGuardHome_PORT" ]; then
-	AdGuardHome_PORT="0"
-fi
+config_get binpath $CONFIGURATION binpath "/usr/bin/AdGuardHome/AdGuardHome"
+mkdir -p ${binpath%/*}
+
 set_forward_dnsmasq()
 {
 	local PORT="$1"
@@ -149,7 +148,10 @@ do_redirect()
 	ipv6_server=0
 	tcp_server=0
 	enabled=$1
-
+	AdGuardHome_PORT=$(awk '/  port:/{printf($2)}' $configpath)
+	if [ -z "$AdGuardHome_PORT" ]; then
+		AdGuardHome_PORT="0"
+	fi
 	config_get "redirect" "$section" "redirect" "none"
 	config_get "old_redirect" "$section" "old_redirect" "none"
 	config_get "old_port" "$section" "old_port" "0"
@@ -244,7 +246,6 @@ start_service() {
 	local enabled
 	local ADDITIONAL_ARGS=""
 	
-	config_get configpath $CONFIGURATION configpath "/etc/AdGuardHome.yaml"
 	ADDITIONAL_ARGS="$ADDITIONAL_ARGS -c $configpath"
 	
 	config_get hashpass $CONFIGURATION hashpass ""
@@ -267,8 +268,6 @@ start_service() {
 		ADDITIONAL_ARGS="$ADDITIONAL_ARGS -l $logfile"
 	fi
 	
-	config_get binpath $CONFIGURATION binpath "/usr/bin/AdGuardHome/AdGuardHome"
-	mkdir -p ${binpath%/*}
 	if [ ! -f "$binpath" ]; then
 		do_redirect 0
 		touch /var/run/update_core
@@ -318,7 +317,9 @@ stop_service()
 {
 	config_load "${CONFIGURATION}"
 	do_redirect 0
-	killall -q AdGuardHome
+	config_get lastbinpath $CONFIGURATION lastbinpath $binpath
+	killall -q $lastbinpath
+	uci set $CONFIGURATION.$CONFIGURATION.lastbinpath=$binpath
 	echo "AdGuardHome turn off"
 	echo "enabled="$enabled""
 }
